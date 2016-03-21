@@ -14,6 +14,7 @@ define('IN_PHPBB', true);
 $phpbb_root_path = (defined('PHPBB_ROOT_PATH')) ? PHPBB_ROOT_PATH : './';
 $phpEx = substr(strrchr(__FILE__, '.'), 1);
 include($phpbb_root_path . 'common.' . $phpEx);
+
 // Start session management
 $user->session_begin();
 $auth->acl($user->data);
@@ -55,11 +56,11 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		foreach ($files as $file)
 		{
 			$content = file_get_contents($file);
-			if ($db_vers <= '3.1.0')
+			if ($db_vers < '3.1.0@dev')
 			{
 				$preggy = (preg_match('/version\s?=\s?(.+?)\s/', $content, $match) === 1);
 			}
-			else if ($db_vers >= '3.1.0')
+			else if ($db_vers > '3.1.0@dev')
 			{
 				$preggy = (preg_match('/phpbb_version\s?=\s?(.+?)\s/', $content, $match) === 1);
 			}
@@ -88,7 +89,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 
 	$default_style = ((int) $config['default_style']);
 
-	if ($db_vers >= '3.1.0')
+	if ($db_vers > '3.1.0@dev')
 	{
 		$sql = 'SELECT *
 				FROM ' . STYLES_TABLE . '
@@ -102,7 +103,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 		$db->sql_freeresult($result);
 	}
-	else if ($db_vers <= '3.1.0')
+	else if ($db_vers <'3.1.0@dev')
 	{
 		/* OLYMPUS: Pull everything from there */
 		$sql = 'SELECT *
@@ -124,11 +125,11 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		$names_ids = $key . $value;
 		$names_ids_ary[] = $names_ids;
 	}
-	if ($db_vers <= '3.1.0')
+	if ($db_vers < '3.1.0@dev')
 	{
 		$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary))];
 	}
-	else if ($db_vers >= '3.1.0')
+	else if ($db_vers > '3.1.0@dev')
 	{
 		$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary)) - 1];
 	}
@@ -173,7 +174,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	}
 
 	/* cookies for Olympus */
-	if ($db_vers <= '3.1.0')
+	if ($db_vers < '3.1.0@dev')
 	{
 		if (!empty($_SERVER['SERVER_NAME']))
 		{
@@ -187,7 +188,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 	}
 	/* cookies for Ascraeus */
-	else if ($db_vers >= '3.1.0')
+	else if ($db_vers > '3.1.0@dev')
 	{
 		$url = $request->server('SERVER_NAME', '');
 	}
