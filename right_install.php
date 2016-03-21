@@ -14,6 +14,7 @@ define('IN_PHPBB', true);
 $phpbb_root_path = (defined('PHPBB_ROOT_PATH')) ? PHPBB_ROOT_PATH : './';
 $phpEx = substr(strrchr(__FILE__, '.'), 1);
 include($phpbb_root_path . 'common.' . $phpEx);
+
 // Start session management
 $user->session_begin();
 $auth->acl($user->data);
@@ -124,14 +125,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		$names_ids = $key . $value;
 		$names_ids_ary[] = $names_ids;
 	}
-	if ($db_vers < '3.1.0@dev')
-	{
-		$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary))];
-	}
-	else if ($db_vers > '3.1.0@dev')
-	{
-		$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary)) - 1];
-	}
+	$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary))];
 	echo '<br />Board\'s default style: <font style="color:purple">' . $true_default . '</font><br />';
 
 	$styles_installed = implode(', ', $names);
