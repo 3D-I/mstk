@@ -4,8 +4,8 @@
 * Download and unzip the file, upload it to your Board's root (i.e.: www.mydomain.com/phpBB3/)
 * Point your browser to i.e.: www.mydomain.com/phpBB3/right_install.php) and follow instructions.
 *
-* @package - right_install.php 1.0.0-b4 (true versions comparison and more)
-* @copyright (c) 2016 3Di (Marco T.) 20-Mar-2016
+* @package - right_install.php 1.0.0-b5 (true versions comparison and more)
+* @copyright (c) 2016 3Di (Marco T.) 23-Mar-2016
 * @license http://opensource.org/licenses/gpl-2.0.php GNU General Public License v2
 *
 * Some code taken from modission_reset by Oyabun
@@ -25,6 +25,7 @@ $version = PHPBB_VERSION;
 $php_version = PHP_VERSION;
 $styles_path = ($phpbb_root_path . 'styles');
 $files = glob('styles/*/style.cfg');
+$default_style = ((int) $config['default_style']);
 
 /* If ANONYMOUS = login box */
 if ((int) $user->data['user_id'] == ANONYMOUS)
@@ -46,21 +47,22 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	}
 	echo '<strong style="color:purple">The following stats are just for information purposes at the present time</strong><br />';
 
-	// List of available styles (version)
+	/* List of available styles (version) */
 	if (is_array($files))
 	{
 		foreach (array_slice(scandir($styles_path), 2) as $folder)
 		{
 			$style_names[] = substr($folder, 0);
 		}
+
 		foreach ($files as $file)
 		{
 			$content = file_get_contents($file);
-			if ($db_vers < '3.1.0@dev')
+			if ($db_vers <'3.1.0@dev')
 			{
 				$preggy = (preg_match('/version\s?=\s?(.+?)\s/', $content, $match) === 1);
 			}
-			else if ($db_vers > '3.1.0@dev')
+			else if ($db_vers >'3.1.0@dev')
 			{
 				$preggy = (preg_match('/phpbb_version\s?=\s?(.+?)\s/', $content, $match) === 1);
 			}
@@ -85,15 +87,14 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 	}
 	$availables = implode(', ', $avail_ary);
-	echo 'Styles(version) available: ' . $availables;
 
-	$default_style = ((int) $config['default_style']);
+	/* 3.1.x styles installed */
 
 	if ($db_vers > '3.1.0@dev')
 	{
-		$sql = 'SELECT *
-				FROM ' . STYLES_TABLE . '
-				GROUP BY style_id';
+		$sql = 'SELECT style_id, style_path
+			FROM ' . STYLES_TABLE . '
+			GROUP BY style_id';
 		$result = $db->sql_query($sql);
 		while ($rows = $db->sql_fetchrow($result))
 		{
@@ -103,9 +104,9 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 		$db->sql_freeresult($result);
 	}
-	else if ($db_vers <'3.1.0@dev')
+	else if ($db_vers < '3.1.0@dev')
 	{
-		/* OLYMPUS: Pull everything from there */
+		/* OLYMPUS: styles installed */
 		$sql = 'SELECT *
 			FROM ' . STYLES_TEMPLATE_TABLE . '
 			GROUP BY template_id';
@@ -118,34 +119,67 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 		$db->sql_freeresult($result);
 	}
-
 	$name_id_ary = array_combine($styles_ids, $style_path);
-	foreach ($name_id_ary as $key => $value)
-	{
-		$names_ids = $key . $value;
-		$names_ids_ary[] = $names_ids;
-	}
-	$true_default = $style_path[array_search($default_style, array_keys($names_ids_ary))];
-	echo '<br />Board\'s default style: <font style="color:purple">' . $true_default . '</font><br />';
-
 	$styles_installed = implode(', ', $names);
-	echo 'Styles installed: <font style="color:green">' . $styles_installed . '</font><br />';
 
-
-	/* Return a list of styles from the DB, those in use by the Users and counts*/
-	$sql = 'SELECT u.user_style, s.style_name, s.style_id, COUNT(u.user_style) AS style_count
-		FROM ' . USERS_TABLE . ' u, ' . STYLES_TABLE . ' s
-			WHERE u.user_style = s.style_id
-		GROUP BY s.style_name';
-	$result = $db->sql_query($sql);
-
-	while ($row = $db->sql_fetchrow($result))
+	/* 3.1.x - Default style */
+	if ($db_vers > '3.1.0@dev')
 	{
-		$style_count[$row['style_count']] = $row['style_name'];
-		$count[$row['style_count']] = $row['style_count'];
+		$sql = 'SELECT style_id, style_path
+			FROM ' . STYLES_TABLE . '
+			WHERE style_id = ' . $default_style . '
+			GROUP BY style_path';
+		$result = $db->sql_query_limit($sql, 1);
+		$row = $db->sql_fetchrow($result);
+		$db->sql_freeresult($result);
+		$true_default = $row['style_path'];
+	}
+	else if ($db_vers < '3.1.0@dev')
+	{
+		/* OLYMPUS: Default style */
+		$sql = 'SELECT template_id, template_path
+			FROM ' . STYLES_TEMPLATE_TABLE . '
+			WHERE template_id = ' . $default_style . '
+			GROUP BY template_path';
+		$result = $db->sql_query_limit($sql, 1);
+		$row = $db->sql_fetchrow($result);
+		$db->sql_freeresult($result);
+		$true_default = $row['template_path'];
 	}
 
-	$db->sql_freeresult($result);
+	if ($db_vers > '3.1.0@dev')
+	{
+	/* 3.1 : Return a list of styles from the DB, those in use by the Users and counts*/
+		$sql = 'SELECT u.user_style, s.style_id, s.style_path, COUNT(u.user_style) AS style_count
+			FROM ' . USERS_TABLE . ' u, ' . STYLES_TABLE . ' s
+				WHERE u.user_style = s.style_id
+			GROUP BY s.style_path';
+		$result = $db->sql_query($sql);
+
+		while ($row = $db->sql_fetchrow($result))
+		{
+			$style_count[$row['style_count']] = $row['style_path'];
+			$count[$row['style_count']] = $row['style_count'];
+		}
+		$db->sql_freeresult($result);
+	}
+	else if ($db_vers < '3.1.0@dev')
+	{
+	/* 3.0 : Return a list of styles from the DB, those in use by the Users and counts*/
+		$sql = 'SELECT u.user_style, s.template_id, s.template_path, COUNT(u.user_style) AS style_count
+			FROM ' . USERS_TABLE . ' u, ' . STYLES_TEMPLATE_TABLE . ' s
+				WHERE u.user_style = s.template_id
+			GROUP BY s.template_path';
+		$result = $db->sql_query($sql);
+
+		while ($row = $db->sql_fetchrow($result))
+		{
+			$style_count[$row['style_count']] = $row['template_path'];
+			$count[$row['style_count']] = $row['style_count'];
+		}
+		$db->sql_freeresult($result);
+	}
+
 	$name_count_array = array_combine($style_count, $count);
 	foreach ($name_count_array as $key => $value)
 	{
@@ -153,8 +187,11 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		$style_and_count[] = $avail;
 	}
 	$styles_in_use = implode(', ', $style_and_count);
-	echo 'Styles in use (incl. bots): <font style="color:blue">' . $styles_in_use . '</font><br />';
 
+	echo 'Styles (version) available: ' . $availables;
+	echo '<br />Default style of the Board (for new users): <font style="color:purple">' . $true_default . '</font><br />';
+	echo 'Styles installed: <font style="color:green">' . $styles_installed . '</font><br />';
+	echo 'Styles in use (incl. bots and guests): <font style="color:blue">' . $styles_in_use . '</font><br />';
 
 	$en_lang_path = ($phpbb_root_path . 'language/en');
 	if (file_exists($en_lang_path. "/common.$phpEx"))
@@ -199,19 +236,19 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	/* Let's check some folders' perms */
 	$cache_dir = ($phpbb_root_path . 'cache');
 	$perms = substr(sprintf('%o', fileperms($cache_dir)), -4);
-	echo '<br /><font style="color:purple">Cache folder chmod permissions are set to: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Cache folder chmod: </font><font style="color:blue">' . $perms . '</font>';
 
 	$store_dir = ($phpbb_root_path . 'store');
 	$perms = substr(sprintf('%o', fileperms($store_dir)), -4);
-	echo '<br /><font style="color:purple">Store folder chmod permissions are set to: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Store folder chmod: </font><font style="color:blue">' . $perms . '</font>';
 
 	$files_dir = ($phpbb_root_path . 'files');
 	$perms = substr(sprintf('%o', fileperms($files_dir)), -4);
-	echo '<br /><font style="color:purple">Files folder chmod permissions are set to: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Files folder chmod: </font><font style="color:blue">' . $perms . '</font>';
 
 	$av_up_dir = ($phpbb_root_path . 'images/avatars/upload');
 	$perms = substr(sprintf('%o', fileperms($av_up_dir)), -4);
-	echo '<br /><font style="color:purple">Images/avatar/upload folder chmod permissions are set to: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Images/avatar/upload folder chmod: </font><font style="color:blue">' . $perms . '</font>';
 
 	/* Hasta la vista! */
 	echo '<br /><font color="blue">Copy-paste these results or make a screenshot for further support...<br />...I am self destroying, hasta la vista!</font><br /><br />';
