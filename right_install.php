@@ -60,7 +60,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 			$content = file_get_contents($file);
 			if ($db_vers <'3.1.0@dev')
 			{
-				$preggy = (preg_match('/version\s?=\s?(.+?)\s/', $content, $match) === 1);
+				$preggy = (preg_match('/version\s*=\s*(.+?)\s*$/', $content, $match) === 1);
 			}
 			else if ($db_vers >'3.1.0@dev')
 			{
@@ -188,7 +188,14 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	}
 	$styles_in_use = implode(', ', $style_and_count);
 
-	echo 'Styles (version) available: ' . $availables;
+	if ($db_vers > '3.1.0@dev')
+	{
+		echo 'Styles (phpBB ver) available: ' . $availables;
+	}
+	else if ($db_vers < '3.1.0@dev')
+	{
+		echo 'Styles (ver) available: ' . $availables;
+	}
 	echo '<br />Default style of the Board (for new users): <font style="color:purple">' . $true_default . '</font><br />';
 	echo 'Styles installed: <font style="color:green">' . $styles_installed . '</font><br />';
 	echo 'Styles in use (incl. bots and guests): <font style="color:blue">' . $styles_in_use . '</font><br />';
