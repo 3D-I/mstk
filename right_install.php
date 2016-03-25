@@ -4,8 +4,8 @@
 * Download and unzip the file, upload it to your Board's root (i.e.: www.mydomain.com/phpBB3/)
 * Point your browser to i.e.: www.mydomain.com/phpBB3/right_install.php) and follow instructions.
 *
-* @package - right_install.php 1.0.0-b5 (true versions comparison and more)
-* @copyright (c) 2016 3Di (Marco T.) 23-Mar-2016
+* @package - right_install.php 1.1.0-a1 (true versions comparison and more)
+* @copyright (c) 2016 3Di (Marco T.) 25-Mar-2016
 * @license http://opensource.org/licenses/gpl-2.0.php GNU General Public License v2
 *
 * Some code taken from modission_reset by Oyabun
@@ -26,6 +26,7 @@ $php_version = PHP_VERSION;
 $styles_path = ($phpbb_root_path . 'styles');
 $files = glob('styles/*/style.cfg');
 $default_style = ((int) $config['default_style']);
+$langs_path = ($phpbb_root_path . 'language');
 
 /* If ANONYMOUS = login box */
 if ((int) $user->data['user_id'] == ANONYMOUS)
@@ -199,16 +200,54 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	echo '<br />Default style of the Board (for new users): <font style="color:purple">' . $true_default . '</font><br />';
 	echo 'Styles installed: <font style="color:green">' . $styles_installed . '</font><br />';
 	echo 'Styles in use (incl. bots and guests): <font style="color:blue">' . $styles_in_use . '</font><br />';
+	echo 'Override user style: ' . ($config['override_user_style'] ? '<font style="color:blue">Yes</font>' : '<font style="color:blue">No</font>') . '<br />';
 
-	$en_lang_path = ($phpbb_root_path . 'language/en');
-	if (file_exists($en_lang_path. "/common.$phpEx"))
+	/* checks which langs are into the folder */
+	foreach (array_slice(scandir($langs_path), 2) as $folder)
 	{
-		echo '<font style="color:green">language/en/common.php file found.</font> Its version check is not yet available, though.';
+		/* get rid of index.htm from the array */
+		if (!preg_match('/^[A-Za-z]+\.htm$/', $folder))
+		$langs_names[] = substr($folder, 0);
 	}
-	else if (!file_exists($en_lang_path. "/common.$phpEx"))
+	$lang_avail = implode(', ', $langs_names);
+	$lang_availables = '<font style="color:blue">' . $lang_avail . '</font>';
+
+	/* check which langs are in use by the users and count */
+	$sql = 'SELECT user_lang, COUNT(user_lang) AS lang_count
+		FROM ' . USERS_TABLE . '
+		GROUP BY user_lang';
+	$result = $db->sql_query($sql);
+	while ($row = $db->sql_fetchrow($result))
 	{
-		echo '<font style="color:red">language/en/common.php file not found!</font> Critical error!';
+		$lang_name[$row['user_lang']] = $row['user_lang'];
+		$lang_count[$row['user_lang']] = $row['lang_count'];
 	}
+	$db->sql_freeresult($result);
+
+	$lang_count_array = array_combine($lang_name, $lang_count);
+	foreach ($lang_count_array as $key => $value)
+	{
+		$avail = $key . ' <font style="color:purple">(' . $value . ')</font>';
+		$lang_and_count[] = $avail;
+	}
+	$langs_in_use = implode(', ', $lang_and_count);
+
+	/* Return a list of languages from the DB, those in installed */
+	$sql = 'SELECT lang_id, lang_local_name
+		FROM ' . LANG_TABLE . '
+		ORDER BY lang_id';
+	$result = $db->sql_query($sql);
+	while ($row = $db->sql_fetchrow($result))
+	{
+		$lang_names[] = $row['lang_local_name'];
+	}
+	$db->sql_freeresult($result);
+	$langs_installed = implode(', ', $lang_names);
+
+	echo 'Languages available: ' . $lang_availables . '<br />';
+	echo 'Your Board\'s default language is <strong style="color:blue">' . $config['default_lang'] . '</strong><br />';
+	echo 'Languages installed: <font style="color:green">' . $langs_installed . '</font><br />';
+	echo 'Languages in use (incl. bots and guests): <font style="color:blue">' . $langs_in_use . '</font>';
 
 	/* cookies for Olympus */
 	if ($db_vers < '3.1.0@dev')
@@ -241,21 +280,29 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	echo '<br /><font style="color:purple">ImageMagick path: </font><font style="color:blue">' . $config['img_imagick'] . '</font>';
 
 	/* Let's check some folders' perms */
+	if ($perms = "0777")
+	{
+		$perm_col = '</font><font style="color:green">' . $perms . '</font>';
+	}
+	else
+	{
+		$perm_col = '</font><font style="color:red">' . $perms . '</font>';
+	}
 	$cache_dir = ($phpbb_root_path . 'cache');
 	$perms = substr(sprintf('%o', fileperms($cache_dir)), -4);
-	echo '<br /><font style="color:purple">Cache folder chmod: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Cache folder chmod: </font>' . $perm_col . '';
 
 	$store_dir = ($phpbb_root_path . 'store');
 	$perms = substr(sprintf('%o', fileperms($store_dir)), -4);
-	echo '<br /><font style="color:purple">Store folder chmod: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Store folder chmod: </font>' . $perm_col . '';
 
 	$files_dir = ($phpbb_root_path . 'files');
 	$perms = substr(sprintf('%o', fileperms($files_dir)), -4);
-	echo '<br /><font style="color:purple">Files folder chmod: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Files folder chmod: ' . $perm_col . '';
 
 	$av_up_dir = ($phpbb_root_path . 'images/avatars/upload');
 	$perms = substr(sprintf('%o', fileperms($av_up_dir)), -4);
-	echo '<br /><font style="color:purple">Images/avatar/upload folder chmod: </font><font style="color:blue">' . $perms . '</font>';
+	echo '<br /><font style="color:purple">Images/avatar/upload folder chmod: </font>' . $perm_col . '';
 
 	/* Hasta la vista! */
 	echo '<br /><font color="blue">Copy-paste these results or make a screenshot for further support...<br />...I am self destroying, hasta la vista!</font><br /><br />';
