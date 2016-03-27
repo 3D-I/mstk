@@ -4,8 +4,8 @@
 * Download and unzip the file, upload it to your Board's root (i.e.: www.mydomain.com/phpBB3/)
 * Point your browser to i.e.: www.mydomain.com/phpBB3/right_install.php) and follow instructions.
 *
-* @package - right_install.php 1.1.0-a1 (true versions comparison and more)
-* @copyright (c) 2016 3Di (Marco T.) 25-Mar-2016
+* @package - right_install.php 2.0.0-b1 (true versions comparison and more)
+* @copyright (c) 2016 3Di (Marco T.) 27-Mar-2016
 * @license http://opensource.org/licenses/gpl-2.0.php GNU General Public License v2
 *
 * Some code taken from modission_reset by Oyabun
@@ -35,27 +35,67 @@ if ((int) $user->data['user_id'] == ANONYMOUS)
 }
 if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 {
-// PHP (>=4.3.3, >=4.4.0, >=5.0.0) - olympus
-
 	/* The party begins. If not correct versions tell them */
-	if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '5.3.3', '<')) || (version_compare(PHP_VERSION, '7.0.0', '>=')))
+	if ($db_vers >= '3.2.0-b2') // Rhea
 	{
-		echo '<strong style="color:red">Versions mismatch:</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:red">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:red">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:red">' . $php_version . '</font><br />';
+		//RHEA: •The following PHP modules are required: ◦json •getimagesize() function must be enabled
+
+		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '5.4.0', '<')) || (version_compare(PHP_VERSION, '7.1', '>')))
+		{
+			echo '<strong style="color:red">Versions mismatch:</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:red">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:red">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:red">' . $php_version . '</font><br />';
+		}
+		else if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "=")) && (version_compare(PHP_VERSION, '5.4.0', '>')) || (version_compare(PHP_VERSION, '7.1', '=<')))
+		{
+			echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
+		}
 	}
-	else if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "=")) && (version_compare(PHP_VERSION, '5.3.3', '>')) && (version_compare(PHP_VERSION, '7.0.0', '<')))
+	else if ($db_vers > '3.1.0@dev') // Ascraeus
 	{
-		echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
+		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '5.3.3', '<')) || (version_compare(PHP_VERSION, '7.0.0', '>=')))
+		{
+			echo '<strong style="color:red">Versions mismatch:</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:red">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:red">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:red">' . $php_version . '</font><br />';
+		}
+		else if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "=")) && (version_compare(PHP_VERSION, '5.3.3', '>')) && (version_compare(PHP_VERSION, '7.0.0', '<')))
+		{
+			echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
+		}
 	}
+	else if ($db_vers < '3.1.0@dev') // Olympus
+	{
+		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '4.3.3', '<')) || (version_compare(PHP_VERSION, '7.0.0', '>=')))
+		{
+			echo '<strong style="color:red">Versions mismatch:</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:red">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:red">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:red">' . $php_version . '</font><br />';
+		}
+		else if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "=")) && (version_compare(PHP_VERSION, '4.3.3', '>')) && (version_compare(PHP_VERSION, '7.0.0', '<')))
+		{
+			echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
+		}
+	}
+
 	echo '<strong style="color:purple">The following stats are just for information purposes at the present time</strong><br />';
 
 	/* List of available styles (version) */
 	if (is_array($files))
 	{
-		foreach (array_slice(scandir($styles_path), 2) as $folder)
+		/* minimum for RHEA is 3.2.0-b2 else fails */
+		if ($db_vers >= '3.2.0-b2')
 		{
-			$style_names[] = substr($folder, 0);
+			/* get rid of the "all" folder from the array */
+			if (!preg_match('/^[A-Za-z]+\all$/', $folder))
+			{
+				foreach (array_slice(scandir($styles_path), 3) as $folder)
+				{
+					$style_names[] = substr($folder, 0);
+				}
+			}
 		}
-
+		else if ($db_vers < '3.2.0-b2')
+		{
+			foreach (array_slice(scandir($styles_path), 2) as $folder)
+			{
+				$style_names[] = substr($folder, 0);
+			}
+		}
 		foreach ($files as $file)
 		{
 			$content = file_get_contents($file);
@@ -89,7 +129,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	}
 	$availables = implode(', ', $avail_ary);
 
-	/* 3.1.x styles installed */
+	/* 3.1.x/3.2.x styles installed */
 
 	if ($db_vers > '3.1.0@dev')
 	{
@@ -123,7 +163,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	$name_id_ary = array_combine($styles_ids, $style_path);
 	$styles_installed = implode(', ', $names);
 
-	/* 3.1.x - Default style */
+	/* 3.1.x/3.2.x - Default style */
 	if ($db_vers > '3.1.0@dev')
 	{
 		$sql = 'SELECT style_id, style_path
@@ -263,7 +303,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 			$url = $_SERVER['LOCAL_ADDR'];
 		}
 	}
-	/* cookies for Ascraeus */
+	/* cookies for Ascraeus/Rhea */
 	else if ($db_vers > '3.1.0@dev')
 	{
 		$url = $request->server('SERVER_NAME', '');
@@ -322,7 +362,7 @@ else
 	remove_me();
 }
 
-/* for old Olympus */
+/* for very old Olympus */
 /*function phpbb_version_compare($version1, $version2, $operator = null)
 {
 	$version1 = strtolower($version1);
