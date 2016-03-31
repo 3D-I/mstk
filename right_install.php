@@ -4,8 +4,8 @@
 * Download and unzip the file, upload it to your Board's root (i.e.: www.mydomain.com/phpBB3/)
 * Point your browser to i.e.: www.mydomain.com/phpBB3/right_install.php) and follow instructions.
 *
-* @package - right_install.php 2.0.0-b1 (true versions comparison and more)
-* @copyright (c) 2016 3Di (Marco T.) 27-Mar-2016
+* @package - right_install.php 2.0.0-b2 (true versions comparison and more)
+* @copyright (c) 2016 3Di (Marco T.) 01-Apr-2016
 * @license http://opensource.org/licenses/gpl-2.0.php GNU General Public License v2
 *
 * Some code taken from modission_reset by Oyabun
@@ -28,6 +28,33 @@ $files = glob('styles/*/style.cfg');
 $default_style = ((int) $config['default_style']);
 $langs_path = ($phpbb_root_path . 'language');
 
+/* We backport the original function phpbb_version_compare just in case is not present*/
+$olympus_old = '3.0.10-RC1';
+$old_olympus = ((version_compare(PHPBB_VERSION, $olympus_old, "<")) ? true : false);
+
+if ($old_olympus)
+{
+	function phpbb_version_compare($version1, $version2, $operator = null)
+	{
+		$version1 = strtolower($version1);
+		$version2 = strtolower($version2);
+
+		if (is_null($operator))
+		{
+			return version_compare($version1, $version2);
+		}
+		else
+		{
+			return version_compare($version1, $version2, $operator);
+		}
+	}
+}
+
+/* Ok, we can finally use the original function phpbb_version_compare from now on */
+$rhea = (phpbb_version_compare($db_vers, '3.2.0@dev', ">=")) ? true : false;
+$ascraeus = ((phpbb_version_compare($db_vers, '3.1.0@dev', ">")) && (phpbb_version_compare($db_vers, '3.2.0@dev', '<'))) ? true : false;
+$olympus = ((phpbb_version_compare(PHPBB_VERSION, '3.1.0@dev', "<")) && (phpbb_version_compare($db_vers, '3.1.0@dev', "<")) ? true : false);
+
 /* If ANONYMOUS = login box */
 if ((int) $user->data['user_id'] == ANONYMOUS)
 {
@@ -36,10 +63,8 @@ if ((int) $user->data['user_id'] == ANONYMOUS)
 if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 {
 	/* The party begins. If not correct versions tell them */
-	if ($db_vers >= '3.2.0-b2') // Rhea
+	if ($rhea || (!$olympus))
 	{
-		//RHEA: •The following PHP modules are required: ◦json •getimagesize() function must be enabled
-
 		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '5.4.0', '<')) || (version_compare(PHP_VERSION, '7.1', '>')))
 		{
 			echo '<strong style="color:red">Versions mismatch:</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:red">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:red">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:red">' . $php_version . '</font><br />';
@@ -49,7 +74,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 			echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
 		}
 	}
-	else if ($db_vers > '3.1.0@dev') // Ascraeus
+	else if ($ascraeus || (!$olympus))
 	{
 		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '5.3.3', '<')) || (version_compare(PHP_VERSION, '7.0.0', '>=')))
 		{
@@ -60,7 +85,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 			echo '<strong style="color:green">Congratulations!</strong><br />Your CONSTANTS file belongs to phpBB <font style="color:green">' . $version . '</font><br />Your DB says you are running phpBB <font style="color:green">' . $db_vers . '</font><br />Your PHP version says you are running PHP <font style="color:green">' . $php_version . '</font><br />';
 		}
 	}
-	else if ($db_vers < '3.1.0@dev') // Olympus
+	else if ($olympus)
 	{
 		if ((phpbb_version_compare(PHPBB_VERSION, $db_vers, "<>")) || (version_compare(PHP_VERSION, '4.3.3', '<')) || (version_compare(PHP_VERSION, '7.0.0', '>=')))
 		{
@@ -74,13 +99,52 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 
 	echo '<strong style="color:purple">The following stats are just for information purposes at the present time</strong><br />';
 
+	if (file_exists($phpbb_root_path . 'config.' . $phpEx))
+		{
+		echo 'The file config.php <font style="color:green">exists</font>, size: ' . filesize($phpbb_root_path . 'config.' . $phpEx) . ' bytes<br />';
+	}
+	else
+	{
+		echo 'The file config.php <font style="color:red">does not exists</font><br />';
+	}
+
+	echo 'Available stream wrappers: <font style="color:green">' . implode(', ', stream_get_wrappers()) . '</font><br />';
+
+	//•The following PHP modules are required:
+	// json										----> for ascraeus and rhea
+	// getimagesize() function must be enabled	----> For all
+	if (function_exists('json_last_error_msg'))
+	{
+		echo 'PHP module json: <font style="color:green">loaded</font><br />';
+	}
+	else if (!function_exists('json_last_error_msg'))
+	{
+		echo 'PHP module json: <font style="color:red">not loaded</font><br />';
+	}
+	else
+	{
+		echo 'PHP module json: <font style="color:red">Critical Error while finding the PHP module json</font><br />';
+	}
+
+	if (function_exists('getimagesize'))
+	{
+		echo 'PHP module getimagesize: <font style="color:green">loaded</font><br />';
+	}
+	else if (!function_exists('getimagesize'))
+	{
+		echo 'PHP module getimagesize <font style="color:red">not loaded</font><br />';
+	}
+	else
+	{
+		echo 'PHP module getimagesize: <font style="color:red">Critical Error while finding the PHP module getimagesize</font><br />';
+	}
+
 	/* List of available styles (version) */
 	if (is_array($files))
 	{
-		/* minimum for RHEA is 3.2.0-b2 else fails */
-		if ($db_vers >= '3.2.0-b2')
+		/* The styles/template/all folder has been added since 3.2.0-a1 */
+		if (phpbb_version_compare($db_vers, '3.2.0-a1', ">="))
 		{
-			/* get rid of the "all" folder from the array */
 			if (!preg_match('/^[A-Za-z]+\all$/', $folder))
 			{
 				foreach (array_slice(scandir($styles_path), 3) as $folder)
@@ -89,7 +153,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 				}
 			}
 		}
-		else if ($db_vers < '3.2.0-b2')
+		else if (phpbb_version_compare($db_vers, '3.2.0-a1', "<"))
 		{
 			foreach (array_slice(scandir($styles_path), 2) as $folder)
 			{
@@ -99,11 +163,15 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		foreach ($files as $file)
 		{
 			$content = file_get_contents($file);
-			if ($db_vers <'3.1.0@dev')
+			if ($olympus)
 			{
 				$preggy = (preg_match('/version\s*=\s*(.+?)\s*$/', $content, $match) === 1);
 			}
-			else if ($db_vers >'3.1.0@dev')
+			else if (!$olympus)
+			{
+				$preggy = (preg_match('/phpbb_version\s?=\s?(.+?)\s/', $content, $match) === 1);
+			}
+			else if (($ascraeus) || ($rhea))
 			{
 				$preggy = (preg_match('/phpbb_version\s?=\s?(.+?)\s/', $content, $match) === 1);
 			}
@@ -120,7 +188,15 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 				$style_phpbb_version[] = $match[1];
 			}
 		}
+
+		if (!array_combine($style_names, $style_phpbb_version))
+		{
+			trigger_error('One or more styles uploaded are for a different version of phpBB', E_USER_ERROR);
+
+		}
+
 		$name_version_array = array_combine($style_names, $style_phpbb_version);
+
 		foreach ($name_version_array as $key => $value)
 		{
 			$availables = '<font style="color:blue">' . $key . '</font>' . ' (' . $value . ')';
@@ -130,8 +206,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	$availables = implode(', ', $avail_ary);
 
 	/* 3.1.x/3.2.x styles installed */
-
-	if ($db_vers > '3.1.0@dev')
+	if (($ascraeus) || ($rhea) || (!$olympus))
 	{
 		$sql = 'SELECT style_id, style_path
 			FROM ' . STYLES_TABLE . '
@@ -145,7 +220,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 		$db->sql_freeresult($result);
 	}
-	else if ($db_vers < '3.1.0@dev')
+	else if ($olympus)
 	{
 		/* OLYMPUS: styles installed */
 		$sql = 'SELECT *
@@ -164,7 +239,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	$styles_installed = implode(', ', $names);
 
 	/* 3.1.x/3.2.x - Default style */
-	if ($db_vers > '3.1.0@dev')
+	if (($ascraeus) || ($rhea) || (!$olympus))
 	{
 		$sql = 'SELECT style_id, style_path
 			FROM ' . STYLES_TABLE . '
@@ -175,9 +250,9 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		$db->sql_freeresult($result);
 		$true_default = $row['style_path'];
 	}
-	else if ($db_vers < '3.1.0@dev')
+	else if ($olympus)
 	{
-		/* OLYMPUS: Default style */
+		/* Default style */
 		$sql = 'SELECT template_id, template_path
 			FROM ' . STYLES_TEMPLATE_TABLE . '
 			WHERE template_id = ' . $default_style . '
@@ -188,9 +263,9 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		$true_default = $row['template_path'];
 	}
 
-	if ($db_vers > '3.1.0@dev')
+	if (($ascraeus) || ($rhea) || (!$olympus))
 	{
-	/* 3.1 : Return a list of styles from the DB, those in use by the Users and counts*/
+	/* Return a list of styles from the DB, those in use by the Users and counts*/
 		$sql = 'SELECT u.user_style, s.style_id, s.style_path, COUNT(u.user_style) AS style_count
 			FROM ' . USERS_TABLE . ' u, ' . STYLES_TABLE . ' s
 				WHERE u.user_style = s.style_id
@@ -204,9 +279,9 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 		$db->sql_freeresult($result);
 	}
-	else if ($db_vers < '3.1.0@dev')
+	else if ($olympus)
 	{
-	/* 3.0 : Return a list of styles from the DB, those in use by the Users and counts*/
+	/* Return a list of styles from the DB, those in use by the Users and counts*/
 		$sql = 'SELECT u.user_style, s.template_id, s.template_path, COUNT(u.user_style) AS style_count
 			FROM ' . USERS_TABLE . ' u, ' . STYLES_TEMPLATE_TABLE . ' s
 				WHERE u.user_style = s.template_id
@@ -229,13 +304,17 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	}
 	$styles_in_use = implode(', ', $style_and_count);
 
-	if ($db_vers > '3.1.0@dev')
+	if (($ascraeus) || ($rhea))
 	{
 		echo 'Styles (phpBB ver) available: ' . $availables;
 	}
-	else if ($db_vers < '3.1.0@dev')
+	else if ($olympus)
 	{
 		echo 'Styles (ver) available: ' . $availables;
+	}
+	else
+	{
+		echo 'Styles available: <font style="color:red">Critical error, unable to fetch this data!</font>';
 	}
 	echo '<br />Default style of the Board (for new users): <font style="color:purple">' . $true_default . '</font><br />';
 	echo 'Styles installed: <font style="color:green">' . $styles_installed . '</font><br />';
@@ -245,7 +324,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	/* checks which langs are into the folder */
 	foreach (array_slice(scandir($langs_path), 2) as $folder)
 	{
-		/* get rid of index.htm from the array */
+		/* get rid of index.htm or similars from the array */
 		if (!preg_match('/^[A-Za-z]+\.htm$/', $folder))
 		$langs_names[] = substr($folder, 0);
 	}
@@ -290,7 +369,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	echo 'Languages in use (incl. bots and guests): <font style="color:blue">' . $langs_in_use . '</font>';
 
 	/* cookies for Olympus */
-	if ($db_vers < '3.1.0@dev')
+	if ($olympus)
 	{
 		if (!empty($_SERVER['SERVER_NAME']))
 		{
@@ -304,7 +383,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 		}
 	}
 	/* cookies for Ascraeus/Rhea */
-	else if ($db_vers > '3.1.0@dev')
+	else if (($ascraeus) || ($rhea) || (!$olympus))
 	{
 		$url = $request->server('SERVER_NAME', '');
 	}
@@ -361,22 +440,6 @@ else
 	trigger_error('You don\'t have permission to access the database and files. You need to be logged in as a founder or administrator.');
 	remove_me();
 }
-
-/* for very old Olympus */
-/*function phpbb_version_compare($version1, $version2, $operator = null)
-{
-	$version1 = strtolower($version1);
-	$version2 = strtolower($version2);
-
-	if (is_null($operator))
-	{
-		return version_compare($version1, $version2);
-	}
-	else
-	{
-		return version_compare($version1, $version2, $operator);
-	}
-}*/
 
 /* Attempting to delete this file */
 function remove_me()
