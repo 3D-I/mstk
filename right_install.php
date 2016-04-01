@@ -113,24 +113,24 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 	//•The following PHP modules are required:
 	// json										----> for ascraeus and rhea
 	// getimagesize() function must be enabled	----> For all
-	if (function_exists('json_last_error_msg'))
+	if (@extension_loaded('json'))
 	{
 		echo 'PHP module json: <font style="color:green">loaded</font><br />';
 	}
-	else if (!function_exists('json_last_error_msg'))
+	else if (!@extension_loaded('json'))
 	{
-		echo 'PHP module json: <font style="color:red">not loaded</font><br />';
+		echo 'PHP module json: <font style="color:red">not loaded</font>, required only for Acraeus and Rhea<br />';
 	}
 	else
 	{
 		echo 'PHP module json: <font style="color:red">Critical Error while finding the PHP module json</font><br />';
 	}
 
-	if (function_exists('getimagesize'))
+	if (@function_exists('getimagesize'))
 	{
 		echo 'PHP module getimagesize: <font style="color:green">loaded</font><br />';
 	}
-	else if (!function_exists('getimagesize'))
+	else if (!@function_exists('getimagesize'))
 	{
 		echo 'PHP module getimagesize <font style="color:red">not loaded</font><br />';
 	}
@@ -191,8 +191,7 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 
 		if (!array_combine($style_names, $style_phpbb_version))
 		{
-			trigger_error('One or more styles uploaded are for a different version of phpBB', E_USER_ERROR);
-
+			trigger_error('One or more styles uploaded are for a different version of phpBB<br />or the uploaded style/s have been wrongly uploaded, check the styles folders.', E_USER_ERROR);
 		}
 
 		$name_version_array = array_combine($style_names, $style_phpbb_version);
@@ -437,8 +436,8 @@ if ((int) $user->data['user_type'] == USER_FOUNDER || $auth->acl_get('a_'))
 else
 {
 	/* If logged in without the right permissions, stop everything and self-destroy */
-	trigger_error('You don\'t have permission to access the database and files. You need to be logged in as a founder or administrator.');
 	remove_me();
+	trigger_error('You don\'t have permission to access the database and files. You need to be logged in as a founder or administrator.');
 }
 
 /* Attempting to delete this file */
