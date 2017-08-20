@@ -4,7 +4,7 @@
 * Download and unzip the file, upload it to your Board's root (i.e.: www.mydomain.com/phpBB3/)
 * Point your browser to i.e.: www.mydomain.com/phpBB3/right_install.php) and follow instructions.
 *
-* @package - right_install.php 2.0.0-b2 (true versions comparison and more)
+* @package - right_install.php 2.0.0-b3 (true versions comparison and more)
 * @copyright (c) 2016 3Di (Marco T.) 01-Apr-2016
 * @license http://opensource.org/licenses/gpl-2.0.php GNU General Public License v2
 *
